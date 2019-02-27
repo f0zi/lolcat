@@ -196,7 +196,7 @@ int main(int argc, char** argv)
         if (f) {
             fclose(f);
 
-            if (ferror(f)) {
+            if (ferror(f) && errno) {
                 fwprintf(stderr, L"Error reading input file \"%s\": %s\n", *filename, strerror(errno));
                 return 2;
             }
