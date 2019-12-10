@@ -26,6 +26,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <wchar.h>
+#include <time.h>
 
 static char helpstr[] = "\n"
                         "Usage: lolcat [-h horizontal_speed] [-v vertical_speed] [--] [FILES...]\n"
@@ -37,6 +38,7 @@ static char helpstr[] = "\n"
                         "              -v <d>:   Vertical rainbow frequency (default: 0.1)\n"
                         "                  -f:   Force color even when stdout is not a tty\n"
                         "                  -l:   Use encoding from system locale instead of assuming UTF-8\n"
+                        "                  -r:   Random colors\n"
                         "           --version:   Print version and exit\n"
                         "              --help:   Show this message\n"
                         "\n"
@@ -45,9 +47,9 @@ static char helpstr[] = "\n"
                         "  lolcat            Copy standard input to standard output.\n"
                         "  fortune | lolcat  Display a rainbow cookie.\n"
                         "\n"
-                        "Report lolcat bugs to <http://www.github.org/jaseg/lolcat/issues>\n"
-                        "lolcat home page: <http://www.github.org/jaseg/lolcat/>\n"
-                        "Original idea: <http://www.github.org/busyloop/lolcat/>\n";
+                        "Report lolcat bugs to <https://github.com/jaseg/lolcat/issues>\n"
+                        "lolcat home page: <https://github.com/jaseg/lolcat/>\n"
+                        "Original idea: <https://github.com/busyloop/lolcat/>\n";
 
 #define ARRAY_SIZE(foo) (sizeof(foo) / sizeof(foo[0]))
 const unsigned char codes[] = { 39, 38, 44, 43, 49, 48, 84, 83, 119, 118, 154, 148, 184, 178, 214, 208, 209, 203, 204, 198, 199, 163, 164, 128, 129, 93, 99, 63, 69, 33 };
@@ -72,7 +74,7 @@ static void usage(void)
 
 static void version(void)
 {
-    wprintf(L"lolcat version 0.1, (c) 2014 jaseg\n");
+    wprintf(L"lolcat version 1.0, (c) 2014 jaseg\n");
     exit(0);
 }
 
@@ -94,6 +96,7 @@ int main(int argc, char** argv)
     wint_t c;
     int colors    = isatty(STDOUT_FILENO);
     int force_locale = 1;
+    int random = 0;
     double freq_h = 0.23, freq_v = 0.1;
 
     struct timeval tv;
@@ -122,6 +125,8 @@ int main(int argc, char** argv)
             colors = 1;
         } else if (!strcmp(argv[i], "-l")) {
             force_locale = 0;
+        } else if (!strcmp(argv[i], "-r")) {
+            random = 1;
         } else if (!strcmp(argv[i], "--version")) {
             version();
         } else {
@@ -131,6 +136,11 @@ int main(int argc, char** argv)
         }
     }
 
+    int rand_offset = 0;
+    if (random) {
+        srand(time(NULL));
+        rand_offset = rand();
+    }
     char** inputs = argv + i;
     char** inputs_end = argv + argc;
     if (inputs == inputs_end) {
@@ -138,7 +148,8 @@ int main(int argc, char** argv)
         inputs_end = inputs + 1;
     }
 
-    if (force_locale)
+    char* env_lang = getenv("LANG");
+    if (force_locale && env_lang && !strstr(env_lang, "UTF-8"))
         setlocale(LC_ALL, "C.UTF-8");
     else
         setlocale(LC_ALL, "");
@@ -177,7 +188,7 @@ int main(int argc, char** argv)
                     } else {
                         int ncc = offx * ARRAY_SIZE(codes) + (int)((i += wcwidth(c)) * freq_h + l * freq_v);
                         if (cc != ncc)
-                            wprintf(L"\033[38;5;%hhum", codes[(cc = ncc) % ARRAY_SIZE(codes)]);
+                            wprintf(L"\033[38;5;%hhum", codes[(rand_offset + (cc = ncc)) % ARRAY_SIZE(codes)]);
                     }
                 }
             }
@@ -185,11 +196,11 @@ int main(int argc, char** argv)
             putwchar(c);
 
             if (escape_state == 2)
-                wprintf(L"\033[38;5;%hhum", codes[cc % ARRAY_SIZE(codes)]);
+                wprintf(L"\033[38;5;%hhum", codes[(rand_offset + cc) % ARRAY_SIZE(codes)]);
         }
 
         if (colors)
-            wprintf(L"\n\033[0m");
+            wprintf(L"\033[0m");
 
         cc = -1;
 
