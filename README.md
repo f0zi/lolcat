@@ -1,12 +1,12 @@
 # What?
 
-![](https://raw.githubusercontent.com/jaseg/lolcat/master/LOLCat-Rainbow.jpg)
+![](img/LOLCat-Rainbow.jpg)
 
 ## Screenshot
 
-![](https://raw.githubusercontent.com/jaseg/lolcat/master/screenshot.png)
+![](img/screenshot.png)
 
-![](./sl.gif)
+![](img/sl.gif)
 
 ## Installation
 
