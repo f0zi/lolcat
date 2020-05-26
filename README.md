@@ -10,22 +10,14 @@
 
 ## Installation
 
-### Archlinux
+### Windows
 
-There's an [AUR package](https://aur.archlinux.org/packages/c-lolcat):
+Build `lolcat.sln` in Visual Studio and put the resulting binary at a place of your choice.
 
-```bash
-$ git clone https://aur.archlinux.org/packages/c-lolcat
-$ cd c-lolcat
-$ makepkg -csi
-```
-
-### Ubuntu (Snap)
-
-See [this awesome blog post by a kind person from the internet](https://blog.simos.info/how-to-make-a-snap-package-for-lolcat-with-snapcraft-on-ubuntu/):
+### Unix
 
 ```bash
-$ snap install lolcat-c
+$ make && sudo make install
 ```
 
 ### Mac
@@ -35,12 +27,6 @@ Build loclcat with:
 $ make lolcat
 ```
 ...and put the resulting binary at a place of your choice.
-
-### Others
-
-```bash
-$ make && sudo make install
-```
 
 ## Why?
 

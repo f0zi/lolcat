@@ -1,2 +1,2 @@
-lolcat.o
-censor.o
+*.o
+lolcat
