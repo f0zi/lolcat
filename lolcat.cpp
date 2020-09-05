@@ -140,6 +140,8 @@ void usage(ColorState &state) {
 
 int main(int argc, char** argv)
 {
+	std::ios_base::sync_with_stdio(false);
+
 	int colors = isatty(fileno(stdout));
 	int force_locale = 0, random = 0;
 
