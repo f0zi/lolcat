@@ -23,7 +23,7 @@
 // Windows?
 #include <getopt.h>
 
-#ifdef WINDOWS
+#ifdef _WIN32
 #include <Windows.h>
 #include <io.h>
 #define fileno _fileno
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
 
 	ColorState state;
 
-#if WINDOWS
+#if _WIN32
 	state.offx = ((GetTickCount()/1000) % 10) / 10.0;
 #else
 	struct timeval tv;

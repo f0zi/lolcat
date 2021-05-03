@@ -1,2 +1,9 @@
 *.o
 lolcat
+
+# Visual Studio
+/.vs
+*.suo
+*.user
+/x64
+/x86
