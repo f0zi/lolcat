@@ -1,7 +1,7 @@
 
 CXX ?= g++
 LOLCAT_SRC ?= lolcat.cpp
-CXXFLAGS ?= -std=c++11 -Wall -Wextra -g -O3
+CXXFLAGS ?= -std=c++17 -Wall -Wextra -g -O3
 
 DESTDIR ?= /usr/local/bin
 
