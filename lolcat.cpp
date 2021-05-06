@@ -1,4 +1,4 @@
-/* Copyright (C) 2014 jaseg <github@jaseg.net>
+/* Copyright (C) 2014 jaseg <github@jaseg.net> & 2021 fozi <lolcat@fozi.ca>
  *
  * DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
  * Version 2, December 2004
@@ -43,11 +43,12 @@ static const char extrahelp[] = "\n"
 	"  lolcat            Copy standard input to standard output.\n"
 	"  fortune | lolcat  Display a rainbow cookie.\n"
 	"\n"
-	"Report lolcat bugs to <https://github.com/jaseg/lolcat/issues>\n"
-	"lolcat home page: <https://github.com/jaseg/lolcat/>\n"
+	"Report lolcat bugs to <https://github.com/f0zi/lolcat/issues>\n"
+	"lolcat home page: <https://github.com/f0zi/lolcat/>\n"
+	"Previous version: <https://github.com/jaseg/lolcat/>\n"
 	"Original idea: <https://github.com/busyloop/lolcat/>\n";
 
-static const char version[] = "lolcat version 1.0, (c) 2014 jaseg\n";
+static const char version[] = "lolcat version 2.0, (c) 2021 Fozi\n";
 static const char usage[] = "Usage: lolcat [-h horizontal_speed] [-v vertical_speed] [--] [FILES...]\n";
 
 #define ARRAY_SIZE(foo) (sizeof(foo) / sizeof(foo[0]))
