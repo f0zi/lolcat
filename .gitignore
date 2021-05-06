@@ -5,5 +5,7 @@ lolcat
 /.vs
 *.suo
 *.user
-/x64
-/x86
+/**/x64
+/**/x86
+/**/Debug
+/**/Release

@@ -20,33 +20,22 @@
 #include <cstring>
 #include <cerrno>
 
-// Windows?
-#include <getopt.h>
+#include "cxxopts.hpp"
 
 #ifdef _WIN32
 #include <Windows.h>
 #include <io.h>
 #define fileno _fileno
 #define isatty _isatty
+#define DEFAULT_LOCALE ".UTF8"
+#define wcwidth(c) 1
 #else
 #include <unistd.h>
 #include <sys/time.h>
+#define DEFAULT_LOCALE "C.UTF-8"
 #endif
 
-static char helpstr[] = "\n"
-	"Usage: lolcat [-h horizontal_speed] [-v vertical_speed] [--] [FILES...]\n"
-	"\n"
-	"Concatenate FILE(s), or standard input, to standard output.\n"
-	"With no FILE, or when FILE is -, read standard input.\n"
-	"\n"
-	"              -h <d>:   Horizontal rainbow frequency (default: 0.23)\n"
-	"              -v <d>:   Vertical rainbow frequency (default: 0.1)\n"
-	"                  -f:   Force color even when stdout is not a tty\n"
-	"                  -l    Use locale instead of UTF-8\n"
-	"                  -r:   Random colors\n"
-	"           --version:   Print version and exit\n"
-	"              --help:   Show this message\n"
-	"\n"
+static const char extrahelp[] = "\n"
 	"Examples:\n"
 	"  lolcat f - g      Output f's contents, then stdin, then g's contents.\n"
 	"  lolcat            Copy standard input to standard output.\n"
@@ -56,9 +45,23 @@ static char helpstr[] = "\n"
 	"lolcat home page: <https://github.com/jaseg/lolcat/>\n"
 	"Original idea: <https://github.com/busyloop/lolcat/>\n";
 
+static const char version[] = "lolcat version 1.0, (c) 2014 jaseg\n";
+static const char usage[] = "Usage: lolcat [-h horizontal_speed] [-v vertical_speed] [--] [FILES...]\n";
+
 #define ARRAY_SIZE(foo) (sizeof(foo) / sizeof(foo[0]))
 const unsigned char codes[] = { 39, 38, 44, 43, 49, 48, 84, 83, 119, 118, 154, 148, 184, 178, 214, 208, 209, 203, 204, 198, 199, 163, 164, 128, 129, 93, 99, 63, 69, 33 };
 
+int getTerminalWidth() {
+#if defined(_WIN32)
+	CONSOLE_SCREEN_BUFFER_INFO csbi;
+	GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &csbi);
+	return (int)(csbi.srWindow.Right - csbi.srWindow.Left + 1);
+#elif defined(__linux__)
+	struct winsize w;
+	ioctl(fileno(stdout), TIOCGWINSZ, &w);
+	return (int)(w.ws_col);
+#endif
+}
 
 int find_escape_sequences(wchar_t ch, int state) {
 	if (ch == '\033') { /* Escape sequence YAY */
@@ -99,7 +102,7 @@ void colorise(std::basic_ostream<CharT> &to, std::basic_istream<CharT> &from, Co
 				state.line++;
 				state.col = 0;
 			} else {
-				int newcolor = state.offx * ARRAY_SIZE(codes) + (int)((state.col += wcwidth(c)) * state.freq_h + state.line * state.freq_v);
+				int newcolor = (int)(state.offx * ARRAY_SIZE(codes) + (int)((state.col += wcwidth(c)) * state.freq_h + state.line * state.freq_v));
 				if (state.last_color != newcolor) {
 					to << "\033[38;5;" << (int)codes[(state.offset + (state.last_color = newcolor)) % ARRAY_SIZE(codes)] << "m";
 				}
@@ -123,99 +126,100 @@ void print(const std::string &message, ColorState &state, bool color = true) {
 	else just_copy(std::cout, ss);
 }
 
-void version(ColorState &state) {
-	print("lolcat version 1.0, (c) 2014 jaseg\n", state);
-	exit(0);
-}
-
-void help(ColorState &state) {
-	print(helpstr, state);
-	exit(0);
-}
-
-void usage(ColorState &state) {
-	print("Usage: lolcat [-h horizontal_speed] [-v vertical_speed] [--] [FILES...]\n", state);
-	exit(1);
-}
-
 int main(int argc, char** argv)
 {
+	using namespace std::string_literals;
 	std::ios_base::sync_with_stdio(false);
 
-	int colors = isatty(fileno(stdout));
-	int force_locale = 0, random = 0;
+	const auto width = getTerminalWidth();
+
+	bool colors = false, force_locale = false, random = false;
+	std::vector<std::string> files;
 
 	ColorState state;
 
 #if _WIN32
-	state.offx = ((GetTickCount()/1000) % 10) / 10.0;
+	{
+		DWORD mode;
+		auto console = GetStdHandle(STD_OUTPUT_HANDLE);
+		if(GetConsoleMode(console, &mode)) SetConsoleMode(console, mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING);
+	}
+	state.offx = ((GetTickCount() / 1000) % 10) / 10.0;
 #else
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	state.offx = (tv.tv_sec % 10) / 10.0;
+	{
+		struct timeval tv;
+		gettimeofday(&tv, NULL);
+		state.offx = (tv.tv_sec % 10) / 10.0;
+	}
 #endif
 
-	for(;;) {
-		static struct option long_options[] = {
-			{ "version", no_argument, 0, 0 },
-			{ "help", no_argument, 0, 0 },
-		};
+	cxxopts::Options options("lolcat",
+		"Concatenate FILE(s), or standard input, to standard output.\n"
+		"With no FILE, or when FILE is -, read standard input.\n");
+	options
+		.set_width(width)
+		.custom_help("[-h horizontal_speed] [-v vertical_speed]")
+		.positional_help("[--] [FILES...]")
+		.show_positional_help()
+		.add_options()
+			("h", "Horizontal rainbow frequency", cxxopts::value(state.freq_h)->default_value("0.23"), "horizontal_speed")
+			("v", "Vertical rainbow frequency", cxxopts::value(state.freq_v)->default_value("0.1"), "vertical_speed")
+			("f", "Force color even when stdout is not a tty", cxxopts::value(colors))
+			("l", "Use locale instead of UTF-8", cxxopts::value(force_locale))
+			("r", "Random colors", cxxopts::value(random))
+			("version", "Print version and exit")
+			("help", "Show this message");
 
-		int index;
-		int c = getopt_long(argc, argv, "h:v:flr", long_options, &index);
-		switch(c) {
-			case -1: goto done;
-			case 0: switch(index) {
-				case 0: version(state); break;
-				case 1: help(state); break;
-			}
-			break;
-			case 'h':
-			case 'v': {
-				char* endptr;
-				auto val = strtod(optarg, &endptr);
-				if (*endptr) usage(state);
-				*(c == 'h' ? &state.freq_h : &state.freq_v) = val;
-				break;
-			}
-			case 'f': colors = 1; break;
-			case 'l': force_locale = 1; break;
-			case 'r': random = 1; break;
-			default: usage(state);
-		}
-	} done:
-
-	if (random) {
-		srand(time(NULL));
-		state.offset = rand();
-	}
+	options.add_options("positional")("FILES", "", cxxopts::value(files));
+	options.parse_positional("FILES");
 
 	try {
-		std::locale::global(std::locale(force_locale ? "" : "C.UTF-8"));
-		std::wcin.imbue(std::locale());
-		std::wcout.imbue(std::locale());
-	} catch(const std::exception &e) {
-		std::wcerr << "lolcat: Error setting locale: " << std::locale("").name().c_str() << std::endl;
-	}
+		auto args = options.parse(argc, argv);
+		colors |= (bool)isatty(fileno(stdout));
 
-	if(optind >= argc) {
-		if(colors) colorise(std::wcout, std::wcin, state);
-		else just_copy(std::wcout, std::wcin);
-	} else for(int i = optind; i < argc; i++) {
-		if(std::string("-") == argv[i]) {
+		if(random) {
+			srand((unsigned int)time(NULL));
+			state.offset = rand();
+		}
+
+		try {
+			std::locale::global(std::locale(force_locale ? "" : DEFAULT_LOCALE));
+			std::wcin.imbue(std::locale());
+			std::wcout.imbue(std::locale());
+		}
+		catch (const std::exception &e) {
+			std::wcerr << "lolcat: Error setting locale: " << e.what() << std::endl;
+		}
+
+		if(args.count("help")) {
+			print(options.help({""}), state);
+			print(extrahelp, state);
+			exit(0);
+		}
+
+		if(args.count("version")) {
+			print(version, state);
+			exit(0);
+		}
+
+		if(!files.size()) {
 			if(colors) colorise(std::wcout, std::wcin, state);
 			else just_copy(std::wcout, std::wcin);
-		} else {
-			std::wifstream in(argv[i]);
+		} else for(const auto &file : files) {
+			std::wifstream in(file);
 			if(!in) {
-				std::wcerr << "lolcat: "<< argv[i] << ": " << (errno ? std::strerror(errno) : "Error reading file") << std::endl;
+				std::wcerr << "lolcat: " << file.c_str() << ": " << (errno ? std::strerror(errno) : "Error reading file") << std::endl;
 			} else try {
 				if(colors) colorise(std::wcout, in, state);
 				else just_copy(std::wcout, in);
-			} catch(const std::exception &e) {
-				std::wcerr << "lolcat: " << argv[i] << ": " << e.what() << std::endl;
+			} catch(const std::exception& e) {
+				std::wcerr << "lolcat: " << file.c_str() << ": " << e.what() << std::endl;
 			}
 		}
+	} catch(const cxxopts::OptionException& e) {
+		print("Error parsing arguments: "s + e.what() + "\n", state);
+		print(usage, state);
+		exit(1);
 	}
 
 	return 0;
