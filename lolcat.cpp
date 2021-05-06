@@ -32,6 +32,7 @@
 #else
 #include <unistd.h>
 #include <sys/time.h>
+#include <sys/ioctl.h>
 #define DEFAULT_LOCALE "C.UTF-8"
 #endif
 
