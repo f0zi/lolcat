@@ -20,6 +20,8 @@
 #include <cstring>
 #include <cerrno>
 
+#include <wctype.h>
+
 #include "cxxopts.hpp"
 
 #ifdef _WIN32
@@ -28,7 +30,6 @@
 #define fileno _fileno
 #define isatty _isatty
 #define DEFAULT_LOCALE ".UTF8"
-#define wcwidth(c) 1
 #else
 #include <unistd.h>
 #include <sys/time.h>
@@ -62,6 +63,10 @@ int getTerminalWidth() {
 	ioctl(fileno(stdout), TIOCGWINSZ, &w);
 	return (int)(w.ws_col);
 #endif
+}
+
+int charWidth(wchar_t ch) {
+	return iswcntrl(ch) ? 0 : 1;
 }
 
 int find_escape_sequences(wchar_t ch, int state) {
@@ -103,7 +108,7 @@ void colorise(std::basic_ostream<CharT> &to, std::basic_istream<CharT> &from, Co
 				state.line++;
 				state.col = 0;
 			} else {
-				int newcolor = (int)(state.offx * ARRAY_SIZE(codes) + (int)((state.col += wcwidth(c)) * state.freq_h + state.line * state.freq_v));
+				int newcolor = (int)(state.offx * ARRAY_SIZE(codes) + (int)((state.col += charWidth(c)) * state.freq_h + state.line * state.freq_v));
 				if (state.last_color != newcolor) {
 					to << "\033[38;5;" << (int)codes[(state.offset + (state.last_color = newcolor)) % ARRAY_SIZE(codes)] << "m";
 				}
